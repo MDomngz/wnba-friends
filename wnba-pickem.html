@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WNBA Pick'em — Vegas Lines</title>
+<!-- Tailwind standalone CLI build via jsDelivr — no play-CDN warning -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style type="text/tailwindcss">
+  @theme {
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-sans: 'DM Sans', sans-serif;
+
+    --color-brand-orange: #ff5c35;
+    --color-brand-gold:   #ffb700;
+    --color-brand-green:  #00e5a0;
+    --color-brand-red:    #ff3d6b;
+    --color-brand-blue:   #4da6ff;
+
+    --color-dark-bg:      #0a0c10;
+    --color-dark-surface: #111318;
+    --color-dark-card:    #161a22;
+    --color-dark-border:  #1e2330;
+    --color-dark-bright:  #2a3145;
+    --color-dark-muted:   #6b7494;
+
+    --animate-pulse-dot: pulseDot 1.5s ease-in-out infinite;
+    --animate-slide-up:  slideUp .3s ease both;
+    --animate-fade-in:   fadeIn .2s ease both;
+    --animate-shimmer:   shimmer 1.6s linear infinite;
+
+    @keyframes pulseDot { 0%,100% { opacity:1 } 50% { opacity:.2 } }
+    @keyframes slideUp  { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes fadeIn   { from { opacity:0 } to { opacity:1 } }
+    @keyframes shimmer  { 0% { background-position:-200% 0 } 100% { background-position:200% 0 } }
+  }
+</style>
+<style>
+  * { -webkit-tap-highlight-color: transparent; }
+  body { background:#0a0c10; font-family:'DM Sans',sans-serif; }
+  ::-webkit-scrollbar { width:3px; height:3px; }
+  ::-webkit-scrollbar-thumb { background:#1e2330; border-radius:4px; }
+
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.4;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+  }
+
+  /* ── Accordion ── */
+  .accordion-body { max-height:0; overflow:hidden; transition:max-height .3s ease; }
+  .accordion-body.open { max-height:400px; }
+
+  /* ── Pick buttons ── */
+  .pick-btn { transition:all .15s ease; }
+  .pick-btn:hover:not(:disabled):not(.sel-ats):not(.sel-over):not(.sel-under) {
+    border-color:#ff5c35!important; color:#ff5c35!important; background:rgba(255,92,53,.07)!important;
+  }
+  .sel-ats   { background:#ff5c35!important; border-color:#ff5c35!important; color:#fff!important; }
+  .sel-over  { background:#00e5a0!important; border-color:#00e5a0!important; color:#0a0c10!important; }
+  .sel-under { background:#4da6ff!important; border-color:#4da6ff!important; color:#0a0c10!important; }
+  .pick-btn:disabled { opacity:.35; cursor:not-allowed; }
+
+  /* ── Tabs ── */
+  .tab-btn.active { color:#ff5c35; border-bottom-color:#ff5c35; }
+
+  /* ── History bar ── */
+  .hist-bar { transition:width .5s ease; }
+
+  /* ── Mobile bottom nav ── */
+  #mobileNav { padding-bottom:env(safe-area-inset-bottom); }
+
+  /* ── Shimmer loading ── */
+  .shimmer-block {
+    background:linear-gradient(90deg,#1e2330 25%,#2a3145 50%,#1e2330 75%);
+    background-size:200% 100%;
+    animation:shimmer 1.6s linear infinite;
+    border-radius:6px;
+  }
+
+  /* ── Season history chart bars ── */
+  .week-bar { transition:height .4s ease; }
+
+  /* ── O/U toggle ── */
+  .pick-type-btn { transition:all .15s; }
+  .pick-type-btn.active { background:#ffb700; color:#0a0c10; border-color:#ffb700; }
+</style>
+</head>
+<body class="dark min-h-screen text-slate-200 relative overflow-x-hidden">
+
+<!-- ════════════════════════════════════════════
+  SETUP MODAL
+═════════════════════════════════════════════ -->
+<div id="setupModal" class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm">
+  <div class="bg-dark-card border border-dark-bright rounded-t-3xl sm:rounded-2xl w-full sm:w-[500px] sm:max-w-[95vw] p-7 pb-10 sm:pb-7 animate-slide-up shadow-2xl">
+
+    <div class="flex items-center gap-3 mb-5">
+      <span class="font-display text-3xl tracking-widest">WNBA <span class="text-brand-orange">PICK'EM</span></span>
+      <span class="font-mono text-[9px] bg-brand-orange text-white px-2 py-0.5 rounded tracking-widest">v3</span>
+    </div>
+
+    <!-- Progress bars -->
+    <div class="flex gap-1.5 mb-7">
+      <div class="h-1 flex-1 rounded-full transition-all duration-300" id="sb1"></div>
+      <div class="h-1 flex-1 rounded-full transition-all duration-300" id="sb2"></div>
+      <div class="h-1 flex-1 rounded-full transition-all duration-300" id="sb3"></div>
+    </div>
+
+    <!-- Step 1: Handle -->
+    <div id="s1">
+      <p class="font-display text-lg tracking-widest text-brand-gold mb-1">YOUR HANDLE</p>
+      <p class="text-dark-muted text-sm mb-4">Sets your name on the leaderboard.</p>
+      <input id="uInput" type="text" maxlength="20" placeholder="e.g. HoopSage77" autocomplete="off"
+        class="w-full bg-dark-bg border border-dark-bright rounded-xl px-4 py-3 font-mono text-sm text-white placeholder-dark-muted outline-none focus:border-brand-orange mb-4">
+      <button onclick="wizStep(1)" class="w-full bg-brand-orange text-white font-display text-lg tracking-widest rounded-xl py-3 hover:opacity-85 transition-opacity active:scale-[.98]">NEXT →</button>
+    </div>
+
+    <!-- Step 2: Supabase -->
+    <div id="s2" class="hidden">
+      <p class="font-display text-lg tracking-widest text-brand-gold mb-1">SUPABASE BACKEND</p>
+      <p class="text-dark-muted text-sm mb-1">Real-time leaderboard & pick sync across all players.</p>
+      <a href="https://supabase.com" target="_blank" class="font-mono text-[11px] text-brand-green underline mb-4 block">supabase.com → free project</a>
+
+      <details class="mb-4">
+        <summary class="font-mono text-[10px] text-brand-gold tracking-widest cursor-pointer select-none">SHOW SQL SETUP ▾</summary>
+        <pre class="mt-2 bg-dark-bg border border-dark-border rounded-lg p-3 text-[10px] font-mono text-slate-400 leading-5 overflow-x-auto">-- Run once in Supabase SQL Editor
+CREATE TABLE IF NOT EXISTS players (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  username text UNIQUE NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS picks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  player_id uuid REFERENCES players(id),
+  week_id text NOT NULL,          -- e.g. "2026-W22"
+  game_id text NOT NULL,
+  pick_type text NOT NULL,        -- 'ats' | 'ou'
+  team_picked text,               -- for ATS
+  ou_pick text,                   -- 'over' | 'under'
+  ou_total numeric,
+  game_start timestamptz NOT NULL,
+  result text DEFAULT 'pending',  -- pending|correct|incorrect|push
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(player_id, game_id, pick_type)
+);
+CREATE TABLE IF NOT EXISTS weeks (
+  week_id text PRIMARY KEY,       -- "2026-W22"
+  label text,
+  start_date date,
+  end_date date,
+  graded_at timestamptz
+);</pre>
+      </details>
+
+      <input id="sbUrl" type="url" placeholder="https://xxxx.supabase.co"
+        class="w-full bg-dark-bg border border-dark-bright rounded-xl px-4 py-3 font-mono text-sm text-white placeholder-dark-muted outline-none focus:border-brand-green mb-2">
+      <input id="sbKey" type="text" placeholder="anon public key"
+        class="w-full bg-dark-bg border border-dark-bright rounded-xl px-4 py-3 font-mono text-sm text-white placeholder-dark-muted outline-none focus:border-brand-green mb-4">
+      <div class="flex gap-2">
+        <button onclick="wizBack(2)" class="flex-1 border border-dark-bright text-dark-muted font-display tracking-widest rounded-xl py-3 hover:border-slate-400 transition-colors">← BACK</button>
+        <button onclick="wizStep(2)" class="flex-1 bg-brand-green text-dark-bg font-display text-lg tracking-widest rounded-xl py-3 hover:opacity-85 transition-opacity active:scale-[.98]">CONNECT →</button>
+      </div>
+      <button onclick="wizSkip(2)" class="w-full mt-2 font-mono text-[11px] text-dark-muted underline text-center">Skip — local storage only</button>
+    </div>
+
+    <!-- Step 3: Odds API -->
+    <div id="s3" class="hidden">
+      <p class="font-display text-lg tracking-widest text-brand-gold mb-1">LIVE ODDS FEED</p>
+      <p class="text-dark-muted text-sm mb-1">Real-time ATS spreads <em>and</em> O/U totals from Vegas.</p>
+      <a href="https://the-odds-api.com" target="_blank" class="font-mono text-[11px] text-brand-orange underline mb-4 block">the-odds-api.com → free key (500 req/mo)</a>
+
+      <div class="bg-dark-bg border border-dark-border rounded-lg p-3 mb-4 font-mono text-[10px] text-dark-muted leading-5">
+        <span class="text-brand-gold">Markets fetched:</span> spreads · totals (O/U)<br>
+        <span class="text-brand-gold">Refresh:</span> every 5 min · DraftKings lines
+      </div>
+
+      <input id="oddsKey" type="text" placeholder="Your Odds API key"
+        class="w-full bg-dark-bg border border-dark-bright rounded-xl px-4 py-3 font-mono text-sm text-white placeholder-dark-muted outline-none focus:border-brand-orange mb-4">
+      <div class="flex gap-2">
+        <button onclick="wizBack(3)" class="flex-1 border border-dark-bright text-dark-muted font-display tracking-widest rounded-xl py-3 hover:border-slate-400 transition-colors">← BACK</button>
+        <button onclick="launch()" class="flex-1 bg-brand-orange text-white font-display text-lg tracking-widest rounded-xl py-3 hover:opacity-85 transition-opacity active:scale-[.98]">LAUNCH →</button>
+      </div>
+      <button onclick="wizSkip(3)" class="w-full mt-2 font-mono text-[11px] text-dark-muted underline text-center">Skip — simulated lines</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+  HEADER
+═════════════════════════════════════════════ -->
+<header class="fixed top-0 inset-x-0 z-40 h-14 bg-dark-bg/95 backdrop-blur-md border-b border-dark-border flex items-center justify-between px-4 gap-3">
+  <div class="flex items-center gap-2 min-w-0">
+    <span class="font-display text-2xl tracking-widest whitespace-nowrap">WNBA <span class="text-brand-orange">PICK'EM</span></span>
+    <span id="weekLabel" class="hidden sm:block font-mono text-[9px] text-dark-muted bg-dark-surface border border-dark-border px-2 py-0.5 rounded-full whitespace-nowrap">WEEK 22</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <div id="oddsStatusDot" class="hidden items-center gap-1 font-mono text-[9px] text-dark-muted"><div class="w-1.5 h-1.5 rounded-full bg-brand-green live-dot"></div><span>ODDS</span></div>
+    <div id="dbStatusDot" class="hidden items-center gap-1 font-mono text-[9px] text-dark-muted"><div class="w-1.5 h-1.5 rounded-full bg-brand-green"></div><span>DB</span></div>
+    <button onclick="openSheet('teams')" class="sm:hidden p-2 text-dark-muted hover:text-white transition-colors">
+      <!-- team icon -->
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </button>
+    <button onclick="openSheet('lb')" class="sm:hidden p-2 text-dark-muted hover:text-white transition-colors">
+      <!-- trophy icon -->
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+    </button>
+    <div class="flex items-center gap-1.5 cursor-pointer" onclick="openSetup()">
+      <div id="hdrAvatar" class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-orange to-brand-gold flex items-center justify-center font-display text-sm text-white select-none">?</div>
+      <span id="hdrName" class="hidden md:block text-sm font-semibold">Set Name</span>
+    </div>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════
+  BOTTOM NAV (mobile)
+═════════════════════════════════════════════ -->
+<nav id="mobileNav" class="fixed bottom-0 inset-x-0 z-40 bg-dark-surface/95 backdrop-blur-md border-t border-dark-border flex sm:hidden">
+  <button onclick="showMainTab('games')" data-nav="games" class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 py-3 text-brand-orange">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 8v4l3 3"/></svg>
+    <span class="font-mono text-[9px] tracking-widest">GAMES</span>
+  </button>
+  <button onclick="showMainTab('history')" data-nav="history" class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 py-3 text-dark-muted">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    <span class="font-mono text-[9px] tracking-widest">HISTORY</span>
+  </button>
+  <button onclick="showMainTab('standings')" data-nav="standings" class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 py-3 text-dark-muted">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    <span class="font-mono text-[9px] tracking-widest">STANDINGS</span>
+  </button>
+</nav>
+
+<!-- ════════════════════════════════════════════
+  MAIN LAYOUT — 3-col desktop, single col mobile
+═════════════════════════════════════════════ -->
+<div class="pt-14 pb-16 sm:pb-0 flex min-h-screen relative z-10">
+
+  <!-- LEFT: Teams (desktop sticky / mobile bottom sheet) -->
+  <aside id="leftCol" class="w-64 xl:w-72 flex-shrink-0 border-r border-dark-border bg-dark-surface/60 hidden lg:block overflow-y-auto" style="height:calc(100vh - 56px);position:sticky;top:56px">
+    <div class="px-4 pt-4 pb-1 flex items-center justify-between">
+      <span class="font-mono text-[10px] tracking-widest text-dark-muted uppercase">2026 Teams</span>
+      <span class="font-mono text-[9px] text-dark-muted">15 clubs</span>
+    </div>
+    <div id="teamListDesktop"></div>
+  </aside>
+
+  <!-- CENTER: Games / History / Standings -->
+  <main class="flex-1 min-w-0 overflow-y-auto px-3 sm:px-5 py-4">
+
+    <!-- GAMES PANEL -->
+    <div id="panelGames" class="main-panel">
+      <!-- Sub-tabs -->
+      <div class="flex border-b border-dark-border mb-4 -mx-1 overflow-x-auto">
+        <button class="tab-btn active font-mono text-[10px] tracking-widest px-4 py-2.5 border-b-2 border-transparent whitespace-nowrap transition-all" data-tab="live" onclick="showGameTab('live',this)">LIVE & TODAY</button>
+        <button class="tab-btn font-mono text-[10px] tracking-widest px-4 py-2.5 border-b-2 border-transparent text-dark-muted whitespace-nowrap hover:text-white transition-all" data-tab="upcoming" onclick="showGameTab('upcoming',this)">UPCOMING</button>
+        <button class="tab-btn font-mono text-[10px] tracking-widest px-4 py-2.5 border-b-2 border-transparent text-dark-muted whitespace-nowrap hover:text-white transition-all" data-tab="done" onclick="showGameTab('done',this)">COMPLETED</button>
+      </div>
+      <div id="gameTab-live"></div>
+      <div id="gameTab-upcoming" class="hidden"></div>
+      <div id="gameTab-done" class="hidden"></div>
+    </div>
+
+    <!-- HISTORY PANEL -->
+    <div id="panelHistory" class="main-panel hidden">
+      <div class="flex items-baseline gap-3 mb-5">
+        <span class="font-display text-xl tracking-widest">SEASON HISTORY</span>
+        <span class="font-mono text-[10px] text-dark-muted">2026 · YOUR RECORD</span>
+      </div>
+
+      <!-- Season accuracy chart -->
+      <div class="bg-dark-card border border-dark-border rounded-2xl p-4 mb-4">
+        <div class="font-mono text-[10px] text-dark-muted tracking-widest uppercase mb-4">Weekly Accuracy</div>
+        <div id="histChart" class="flex items-end gap-1.5 h-24"></div>
+        <div id="histLabels" class="flex gap-1.5 mt-1.5"></div>
+      </div>
+
+      <!-- Season totals -->
+      <div class="grid grid-cols-3 gap-3 mb-4" id="seasonTotals"></div>
+
+      <!-- Week-by-week breakdown -->
+      <div class="bg-dark-card border border-dark-border rounded-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-dark-border font-mono text-[10px] tracking-widest text-dark-muted uppercase">Week-by-Week</div>
+        <div id="weekBreakdown"></div>
+      </div>
+    </div>
+
+    <!-- STANDINGS PANEL (mobile leaderboard) -->
+    <div id="panelStandings" class="main-panel hidden">
+      <div class="flex items-baseline gap-3 mb-4">
+        <span class="font-display text-xl tracking-widest">STANDINGS</span>
+        <span id="standingsWeekLabel" class="font-mono text-[10px] text-dark-muted">WEEK 22</span>
+      </div>
+      <div id="mobileLeaderboard"></div>
+      <div class="mt-4 bg-dark-card border border-dark-border rounded-2xl p-4" id="mobileMyStats"></div>
+    </div>
+
+  </main>
+
+  <!-- RIGHT: Leaderboard (desktop) -->
+  <aside class="w-72 xl:w-80 flex-shrink-0 border-l border-dark-border bg-dark-surface/60 hidden xl:block overflow-y-auto" style="height:calc(100vh - 56px);position:sticky;top:56px">
+
+    <!-- Week selector -->
+    <div class="px-4 pt-4 pb-3 border-b border-dark-border">
+      <div class="font-display text-lg tracking-widest mb-0.5">LEADERBOARD</div>
+      <div class="flex items-center justify-between">
+        <button onclick="changeWeek(-1)" class="text-dark-muted hover:text-white transition-colors text-lg leading-none px-1">‹</button>
+        <span id="lbWeekLabel" class="font-mono text-[11px] text-dark-muted tracking-widest">WEEK 22 · MAY 26–JUN 1</span>
+        <button onclick="changeWeek(1)" class="text-dark-muted hover:text-white transition-colors text-lg leading-none px-1">›</button>
+      </div>
+    </div>
+
+    <div id="lbList" class="py-2"></div>
+
+    <!-- My stats card -->
+    <div class="mx-4 my-3 bg-dark-card border border-dark-border rounded-xl p-4">
+      <div class="font-mono text-[9px] tracking-widest text-dark-muted uppercase mb-3">YOUR WEEK</div>
+      <div class="grid grid-cols-3 gap-2 mb-3">
+        <div class="text-center"><div class="font-display text-2xl text-brand-green" id="sc">0</div><div class="font-mono text-[9px] text-dark-muted">CORRECT</div></div>
+        <div class="text-center"><div class="font-display text-2xl text-brand-orange" id="si">0</div><div class="font-mono text-[9px] text-dark-muted">WRONG</div></div>
+        <div class="text-center"><div class="font-display text-2xl text-brand-gold" id="st">0</div><div class="font-mono text-[9px] text-dark-muted">TOTAL</div></div>
+      </div>
+      <div class="h-1.5 bg-dark-border rounded-full overflow-hidden mb-1">
+        <div id="sbar" class="h-full bg-gradient-to-r from-brand-orange to-brand-gold hist-bar" style="width:0%"></div>
+      </div>
+      <div class="font-mono text-[10px] text-dark-muted text-right" id="spct">0% accuracy</div>
+    </div>
+
+    <!-- Sync notice -->
+    <div id="syncNotice" class="hidden mx-4 mb-3 p-3 bg-brand-green/5 border border-brand-green/20 rounded-xl font-mono text-[9px] text-brand-green leading-5">
+      ⚡ REAL-TIME SYNC — picks update live across all players
+    </div>
+    <div id="localNotice" class="mx-4 mb-3 p-3 bg-dark-bg border border-dark-border rounded-xl font-mono text-[9px] text-dark-muted leading-5">
+      💾 LOCAL MODE — connect Supabase in settings to play with others
+    </div>
+
+    <!-- Season mini chart -->
+    <div class="mx-4 mb-4 bg-dark-card border border-dark-border rounded-xl p-4">
+      <div class="font-mono text-[9px] text-dark-muted tracking-widest uppercase mb-3">SEASON SNAPSHOT</div>
+      <div id="miniChart" class="flex items-end gap-1 h-12"></div>
+      <div class="flex justify-between font-mono text-[9px] text-dark-muted mt-1" id="miniLabels"></div>
+    </div>
+  </aside>
+</div>
+
+<!-- ════════════════════════════════════════════
+  BOTTOM SHEETS (mobile)
+═════════════════════════════════════════════ -->
+<div id="sheetOverlay" class="fixed inset-0 z-[55] bg-black/60 hidden" onclick="closeSheets()"></div>
+
+<!-- Teams sheet -->
+<div id="sheetTeams" class="fixed bottom-0 inset-x-0 z-[56] bg-dark-card border-t border-dark-bright rounded-t-3xl max-h-[80vh] overflow-y-auto hidden animate-slide-up pb-safe">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-dark-border">
+    <span class="font-display text-xl tracking-widest">TEAMS</span>
+    <button onclick="closeSheets()" class="text-dark-muted hover:text-white text-2xl leading-none">×</button>
+  </div>
+  <div id="teamListMobile" class="pb-8"></div>
+</div>
+
+<!-- Leaderboard sheet -->
+<div id="sheetLb" class="fixed bottom-0 inset-x-0 z-[56] bg-dark-card border-t border-dark-bright rounded-t-3xl max-h-[80vh] overflow-y-auto hidden animate-slide-up pb-safe">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-dark-border">
+    <span class="font-display text-xl tracking-widest">LEADERBOARD</span>
+    <button onclick="closeSheets()" class="text-dark-muted hover:text-white text-2xl leading-none">×</button>
+  </div>
+  <div id="sheetLbContent" class="pb-8"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 translate-y-3 opacity-0 bg-dark-card border rounded-2xl px-5 py-3 font-mono text-xs z-[70] pointer-events-none shadow-2xl whitespace-nowrap transition-all duration-300"></div>
+
+<!-- ════════════════════════════════════════════
+  JAVASCRIPT
+═════════════════════════════════════════════ -->
+<script>
+// ─────────────────────────────────────
+// CONSTANTS & DATA
+// ─────────────────────────────────────
+const TEAMS = {
+  WAS:{name:"Washington Mystics",city:"Washington D.C.",arena:"Capital One Arena",colors:["#c8102e","#002b5c"],founded:1998,titles:1,coach:"Eric Thibault",record:{w:2,l:8},note:"Rebuilding; high-ceiling young core."},
+  LAS:{name:"Los Angeles Sparks",city:"Los Angeles, CA",arena:"Crypto.com Arena",colors:["#702F8A","#FFC72C"],founded:1997,titles:3,coach:"Curt Miller",record:{w:6,l:5},note:"Historic franchise, deep championship pedigree."},
+  NYL:{name:"New York Liberty",city:"New York, NY",arena:"Barclays Center",colors:["#000000","#6ECEB2"],founded:1997,titles:1,coach:"Sandy Brondello",record:{w:7,l:3},note:"Title contender with elite backcourt depth."},
+  PHX:{name:"Phoenix Mercury",city:"Phoenix, AZ",arena:"Footprint Center",colors:["#201747","#E56020"],founded:1997,titles:3,coach:"Nate Tibbetts",record:{w:4,l:7},note:"Perennial playoff team, strong perimeter shooters."},
+  ATL:{name:"Atlanta Dream",city:"Atlanta, GA",arena:"Gateway Center",colors:["#C8102E","#041E42"],founded:2008,titles:0,coach:"Tanisha Wright",record:{w:6,l:4},note:"On the rise; improved D and rebounding."},
+  DAL:{name:"Dallas Wings",city:"Dallas, TX",arena:"College Park Center",colors:["#002B5C","#C4D600"],founded:1998,titles:0,coach:"Latricia Trammell",record:{w:5,l:5},note:"Athletic up-tempo attack; Azzi Fudd #1 overall pick."},
+  IND:{name:"Indiana Fever",city:"Indianapolis, IN",arena:"Gainbridge Fieldhouse",colors:["#002D62","#E03A3E"],founded:2000,titles:1,coach:"Christie Sides",record:{w:5,l:5},note:"Caitlin Clark era driving massive growth."},
+  GSV:{name:"Golden State Valkyries",city:"San Francisco, CA",arena:"Chase Center",colors:["#1D428A","#FFC72C"],founded:2025,titles:0,coach:"Natalie Nakase",record:{w:6,l:4},note:"2nd-year franchise, massive Bay Area fan base."},
+  SEA:{name:"Seattle Storm",city:"Seattle, WA",arena:"Climate Pledge Arena",colors:["#2C5234","#FEA500"],founded:2000,titles:4,coach:"Noelle Quinn",record:{w:5,l:5},note:"WNBA's most titles; championship culture runs deep."},
+  CON:{name:"Connecticut Sun",city:"Uncasville, CT",arena:"Mohegan Sun Arena",colors:["#F05123","#0C2340"],founded:1999,titles:0,coach:"Stephanie White",record:{w:3,l:8},note:"Perennial contender; tough and physical."},
+  CHI:{name:"Chicago Sky",city:"Chicago, IL",arena:"Wintrust Arena",colors:["#418FDE","#E43C40"],founded:2006,titles:1,coach:"Tyler Marsh",record:{w:2,l:9},note:"Championship DNA; gritty defensive identity."},
+  MIN:{name:"Minnesota Lynx",city:"Minneapolis, MN",arena:"Target Center",colors:["#236192","#9EA1A2"],founded:1999,titles:4,coach:"Cheryl Reeve",record:{w:8,l:2},note:"Dynasty team; Reeve is WNBA's winningest coach."},
+  TOR:{name:"Toronto Tempo",city:"Toronto, Canada",arena:"Scotiabank Arena",colors:["#CE1141","#000000"],founded:2026,titles:0,coach:"TBD",record:{w:4,l:6},note:"WNBA's first Canadian franchise."},
+  PDX:{name:"Portland Fire",city:"Portland, OR",arena:"Moda Center",colors:["#E03A3E","#000000"],founded:2026,titles:0,coach:"TBD",record:{w:7,l:3},note:"New expansion team already contending."},
+  LVA:{name:"Las Vegas Aces",city:"Las Vegas, NV",arena:"Michelob ULTRA Arena",colors:["#000000","#C4B454"],founded:2018,titles:2,coach:"Becky Hammon",record:{w:4,l:7},note:"Back-to-back champions; elite top-to-bottom roster."},
+};
+
+// Week definitions
+const WEEKS = [
+  {id:"2026-W19",label:"Week 19",range:"May 5–11",start:"2026-05-05",end:"2026-05-11"},
+  {id:"2026-W20",label:"Week 20",range:"May 12–18",start:"2026-05-12",end:"2026-05-18"},
+  {id:"2026-W21",label:"Week 21",range:"May 19–25",start:"2026-05-19",end:"2026-05-25"},
+  {id:"2026-W22",label:"Week 22",range:"May 26–Jun 1",start:"2026-05-26",end:"2026-06-01"},
+];
+const CURRENT_WEEK = "2026-W22";
+
+// Simulated prior week results (for season history)
+const PRIOR_HISTORY = {
+  "2026-W19": {correct:5,incorrect:3,total:8},
+  "2026-W20": {correct:7,incorrect:2,total:9},
+  "2026-W21": {correct:4,incorrect:4,total:8},
+};
+
+const GAMES = [
+  // In-progress
+  {id:"g001",wk:"2026-W22",status:"inprogress",start:"2026-05-29T23:30:00Z",home:"WAS",away:"LAS",score:{WAS:87,LAS:90},quarter:4,clock:"00:05",localStart:"Fri May 29, 7:30 PM EDT"},
+  // Closed this week
+  {id:"g002",wk:"2026-W22",status:"closed",start:"2026-05-29T23:30:00Z",home:"NYL",away:"PHX",score:{NYL:75,PHX:68},localStart:"Fri May 29, 7:30 PM EDT"},
+  {id:"g003",wk:"2026-W22",status:"closed",start:"2026-05-29T23:30:00Z",home:"CHI",away:"MIN",score:{CHI:58,MIN:79},localStart:"Fri May 29, 7:30 PM EDT"},
+  {id:"g004",wk:"2026-W22",status:"closed",start:"2026-05-27T23:00:00Z",home:"NYL",away:"PHX",score:{NYL:84,PHX:74},localStart:"Tue May 27, 7:00 PM EDT"},
+  {id:"g005",wk:"2026-W22",status:"closed",start:"2026-05-28T00:00:00Z",home:"CHI",away:"TOR",score:{CHI:104,TOR:111},localStart:"Tue May 27, 8:00 PM EDT"},
+  {id:"g006",wk:"2026-W22",status:"closed",start:"2026-05-28T01:00:00Z",home:"MIN",away:"ATL",score:{MIN:96,ATL:81},localStart:"Tue May 27, 9:00 PM EDT"},
+  {id:"g007",wk:"2026-W22",status:"closed",start:"2026-05-28T02:00:00Z",home:"PDX",away:"CON",score:{PDX:71,CON:61},localStart:"Tue May 27, 10:00 PM EDT"},
+  {id:"g008",wk:"2026-W22",status:"closed",start:"2026-05-28T02:00:00Z",home:"SEA",away:"WAS",score:{SEA:64,WAS:78},localStart:"Tue May 27, 10:00 PM EDT"},
+  {id:"g009",wk:"2026-W22",status:"closed",start:"2026-05-29T00:00:00Z",home:"DAL",away:"LVA",score:{DAL:95,LVA:87},localStart:"Thu May 29, 8:00 PM EDT"},
+  {id:"g010",wk:"2026-W22",status:"closed",start:"2026-05-29T02:00:00Z",home:"GSV",away:"IND",score:{GSV:90,IND:88},localStart:"Thu May 29, 10:00 PM EDT"},
+  // Scheduled this week
+  {id:"g011",wk:"2026-W22",status:"scheduled",start:"2026-05-30T02:00:00Z",home:"PDX",away:"ATL",localStart:"Fri May 29, 10:00 PM EDT"},
+  {id:"g012",wk:"2026-W22",status:"scheduled",start:"2026-05-30T17:00:00Z",home:"TOR",away:"SEA",localStart:"Sat May 30, 1:00 PM EDT"},
+  {id:"g013",wk:"2026-W22",status:"scheduled",start:"2026-05-30T22:00:00Z",home:"CON",away:"LAS",localStart:"Sat May 30, 6:00 PM EDT"},
+  {id:"g014",wk:"2026-W22",status:"scheduled",start:"2026-05-31T00:00:00Z",home:"PDX",away:"IND",localStart:"Sat May 30, 8:00 PM EDT"},
+  {id:"g015",wk:"2026-W22",status:"scheduled",start:"2026-05-31T19:30:00Z",home:"GSV",away:"LVA",localStart:"Sun May 31, 3:30 PM EDT"},
+  {id:"g016",wk:"2026-W22",status:"scheduled",start:"2026-06-02T00:00:00Z",home:"DAL",away:"SEA",localStart:"Mon Jun 1, 8:00 PM EDT"},
+  {id:"g017",wk:"2026-W22",status:"scheduled",start:"2026-06-02T02:00:00Z",home:"PHX",away:"MIN",localStart:"Mon Jun 1, 10:00 PM EDT"},
+  {id:"g018",wk:"2026-W22",status:"scheduled",start:"2026-06-02T23:30:00Z",home:"ATL",away:"CON",localStart:"Tue Jun 2, 7:30 PM EDT"},
+  {id:"g019",wk:"2026-W22",status:"scheduled",start:"2026-06-02T23:30:00Z",home:"WAS",away:"CHI",localStart:"Tue Jun 2, 7:30 PM EDT"},
+  {id:"g020",wk:"2026-W22",status:"scheduled",start:"2026-06-03T02:00:00Z",home:"GSV",away:"PDX",localStart:"Tue Jun 2, 10:00 PM EDT"},
+  {id:"g021",wk:"2026-W22",status:"scheduled",start:"2026-06-03T02:00:00Z",home:"LAS",away:"LVA",localStart:"Tue Jun 2, 10:00 PM EDT"},
+  {id:"g022",wk:"2026-W22",status:"scheduled",start:"2026-06-04T00:00:00Z",home:"NYL",away:"TOR",localStart:"Wed Jun 3, 8:00 PM EDT"},
+  {id:"g023",wk:"2026-W22",status:"scheduled",start:"2026-06-04T02:00:00Z",home:"SEA",away:"PHX",localStart:"Wed Jun 3, 10:00 PM EDT"},
+  {id:"g024",wk:"2026-W22",status:"scheduled",start:"2026-06-04T23:00:00Z",home:"IND",away:"ATL",localStart:"Thu Jun 4, 7:00 PM EDT"},
+  {id:"g025",wk:"2026-W22",status:"scheduled",start:"2026-06-05T01:00:00Z",home:"MIN",away:"GSV",localStart:"Thu Jun 4, 9:00 PM EDT"},
+];
+
+const FALLBACK_SPREADS = {
+  g001:{fav:"LAS",line:-4.5,total:161.5}, g002:{fav:"NYL",line:-6.5,total:156.0}, g003:{fav:"MIN",line:-8.5,total:149.5},
+  g011:{fav:"ATL",line:-7.5,total:158.0}, g012:{fav:"TOR",line:-3.5,total:162.5}, g013:{fav:"LAS",line:-5.5,total:155.0},
+  g014:{fav:"IND",line:-4.5,total:163.0}, g015:{fav:"GSV",line:-3.5,total:159.5}, g016:{fav:"SEA",line:-2.5,total:157.0},
+  g017:{fav:"MIN",line:-8.5,total:152.0}, g018:{fav:"ATL",line:-3.5,total:160.0}, g019:{fav:"CHI",line:-1.5,total:154.5},
+  g020:{fav:"GSV",line:-5.5,total:165.0}, g021:{fav:"LAS",line:-4.5,total:158.0}, g022:{fav:"NYL",line:-6.5,total:161.0},
+  g023:{fav:"SEA",line:-4.5,total:157.5}, g024:{fav:"IND",line:-3.5,total:162.0}, g025:{fav:"MIN",line:-5.5,total:155.5},
+};
+
+const SIM_LB = [
+  {name:"HoopSage77", correct:9,total:11,colors:["#ff5c35","#1a0a06"]},
+  {name:"SwishQueen",  correct:8,total:11,colors:["#6c35ff","#0a061a"]},
+  {name:"NetNation",   correct:7,total:10,colors:["#35b8ff","#061018"]},
+  {name:"Picks_Mamba", correct:7,total:11,colors:["#00e5a0","#000f09"]},
+  {name:"BucketLord",  correct:6,total:9, colors:["#ffb700","#100a00"]},
+  {name:"ArcAngel",    correct:5,total:10,colors:["#ff35b8","#100618"]},
+  {name:"RimRocker",   correct:5,total:11,colors:["#ff8c00","#100500"]},
+];
+
+// ─────────────────────────────────────
+// STATE
+// ─────────────────────────────────────
+const S = {
+  username:  localStorage.getItem('pk_user') || '',
+  picks:     JSON.parse(localStorage.getItem('pk_picks') || '{}'),  // {gameId: {ats:'NYL', ou:'over'}}
+  sbUrl:     localStorage.getItem('pk_sbUrl') || '',
+  sbKey:     localStorage.getItem('pk_sbKey') || '',
+  oddsKey:   localStorage.getItem('pk_oddsKey') || '',
+  playerId:  localStorage.getItem('pk_pid') || null,
+  liveOdds:  {},
+  sbReady:   false,
+  oddsReady: false,
+  viewWeek:  CURRENT_WEEK,   // which week leaderboard is showing
+  activeGameTab: 'live',
+};
+
+// ─────────────────────────────────────
+// WIZARD
+// ─────────────────────────────────────
+function setWizStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById(`s${i}`).classList.toggle('hidden', i !== n);
+    document.getElementById(`sb${i}`).className = `h-1 flex-1 rounded-full transition-all duration-300 ${i <= n ? 'bg-brand-orange' : 'bg-dark-border'}`;
+  });
+}
+
+function wizStep(from) {
+  if (from === 1) {
+    const v = document.getElementById('uInput').value.trim();
+    if (!v) { toast('Enter a handle first', 'error'); return; }
+    S.username = v; localStorage.setItem('pk_user', v); updateHeader(); setWizStep(2);
+  } else if (from === 2) {
+    const url = document.getElementById('sbUrl').value.trim();
+    const key = document.getElementById('sbKey').value.trim();
+    if (!url || !key) { toast('Enter both Supabase URL and anon key', 'error'); return; }
+    S.sbUrl = url; S.sbKey = key;
+    localStorage.setItem('pk_sbUrl', url); localStorage.setItem('pk_sbKey', key);
+    initSupabase(); setWizStep(3);
+  }
+}
+
+function wizBack(from)  { setWizStep(from - 1); }
+function wizSkip(from)  { if(from===2) setWizStep(3); else launch(); }
+
+function launch() {
+  const k = document.getElementById('oddsKey').value.trim();
+  if (k) { S.oddsKey = k; localStorage.setItem('pk_oddsKey', k); }
+  document.getElementById('setupModal').classList.add('hidden');
+  fetchOdds();
+  renderAll();
+  toast(`Welcome, ${S.username}! 🏀`, 'success');
+}
+
+function openSetup() {
+  document.getElementById('setupModal').classList.remove('hidden');
+  setWizStep(1);
+  document.getElementById('uInput').value = S.username;
+}
+
+// ─────────────────────────────────────
+// SUPABASE
+// ─────────────────────────────────────
+function initSupabase() {
+  S.sbReady = true;
+  document.getElementById('dbStatusDot').classList.remove('hidden');
+  document.getElementById('dbStatusDot').classList.add('flex');
+  document.getElementById('syncNotice').classList.remove('hidden');
+  document.getElementById('localNotice').classList.add('hidden');
+}
+
+async function sbFetch(path, method='GET', body=null) {
+  if (!S.sbReady) return null;
+  try {
+    const r = await fetch(`${S.sbUrl}/rest/v1/${path}`, {
+      method,
+      headers: { 'apikey':S.sbKey, 'Authorization':`Bearer ${S.sbKey}`, 'Content-Type':'application/json', 'Prefer': method==='POST'?'return=representation':'' },
+      ...(body ? {body: JSON.stringify(body)} : {})
+    });
+    return r.ok ? r.json().catch(()=>null) : null;
+  } catch { return null; }
+}
+
+async function ensurePlayer() {
+  if (!S.sbReady || !S.username) return;
+  const data = await sbFetch(`players?username=eq.${encodeURIComponent(S.username)}&select=id`);
+  if (data?.length) { S.playerId = data[0].id; }
+  else {
+    const c = await sbFetch('players','POST',{username:S.username});
+    if (c?.[0]) S.playerId = c[0].id;
+  }
+  if (S.playerId) localStorage.setItem('pk_pid', S.playerId);
+}
+
+async function persistPick(gameId, pickType, value, gameStart) {
+  if (!S.sbReady || !S.playerId) return;
+  const payload = {
+    player_id: S.playerId, week_id: CURRENT_WEEK, game_id: gameId,
+    pick_type: pickType, game_start: new Date(gameStart).toISOString(), result:'pending',
+    ...(pickType==='ats' ? {team_picked:value} : {ou_pick:value})
+  };
+  await sbFetch(`picks?on_conflict=player_id,game_id,pick_type`, 'POST', payload);
+}
+
+// ─────────────────────────────────────
+// ODDS API
+// ─────────────────────────────────────
+const TEAM_NAME_MAP = {
+  "Washington Mystics":"WAS","Los Angeles Sparks":"LAS","New York Liberty":"NYL","Phoenix Mercury":"PHX",
+  "Atlanta Dream":"ATL","Dallas Wings":"DAL","Indiana Fever":"IND","Golden State Valkyries":"GSV",
+  "Seattle Storm":"SEA","Connecticut Sun":"CON","Chicago Sky":"CHI","Minnesota Lynx":"MIN",
+  "Toronto Tempo":"TOR","Portland Fire":"PDX","Las Vegas Aces":"LVA"
+};
+
+async function fetchOdds() {
+  if (!S.oddsKey) return;
+  try {
+    const url = `https://api.the-odds-api.com/v4/sports/basketball_wnba/odds?regions=us&markets=spreads,totals&oddsFormat=american&apiKey=${S.oddsKey}`;
+    const res = await fetch(url);
+    if (!res.ok) { toast('Odds API error — using simulated lines','error'); return; }
+    const events = await res.json();
+    let matched = 0;
+    events.forEach(ev => {
+      const homeAbbr = TEAM_NAME_MAP[ev.home_team];
+      const awayAbbr = TEAM_NAME_MAP[ev.away_team];
+      if (!homeAbbr || !awayAbbr) return;
+      const game = GAMES.find(g => g.home===homeAbbr && g.away===awayAbbr && g.status==='scheduled');
+      if (!game) return;
+      const book = ev.bookmakers.find(b=>b.key==='draftkings') || ev.bookmakers[0];
+      if (!book) return;
+
+      const spreadMkt = book.markets.find(m=>m.key==='spreads');
+      const totalMkt  = book.markets.find(m=>m.key==='totals');
+
+      let line, fav, total;
+      if (spreadMkt) {
+        const ho = spreadMkt.outcomes.find(o=>o.name===ev.home_team);
+        if (ho) { line = ho.point; fav = line < 0 ? homeAbbr : awayAbbr; }
+      }
+      if (totalMkt) {
+        const ov = totalMkt.outcomes.find(o=>o.name==='Over');
+        if (ov) total = ov.point;
+      }
+      if (fav != null || total != null) {
+        S.liveOdds[game.id] = {fav, line, total, book:book.title, updated:book.last_update};
+        matched++;
+      }
+    });
+    if (matched > 0) {
+      S.oddsReady = true;
+      document.getElementById('oddsStatusDot').classList.remove('hidden');
+      document.getElementById('oddsStatusDot').classList.add('flex');
+      toast(`Live odds: ${matched} games updated`, 'success');
+      renderGames();
+    }
+  } catch(e) { toast('Odds API unreachable — simulated lines active','error'); }
+}
+
+function getOdds(gid) { return S.liveOdds[gid] || FALLBACK_SPREADS[gid] || null; }
+
+// ─────────────────────────────────────
+// PICKS
+// ─────────────────────────────────────
+async function makePick(gid, type, value, gameStart) {
+  if (!S.username) { toast('Set your handle first', 'error'); openSetup(); return; }
+  if (new Date() >= new Date(gameStart)) { toast('Tipoff passed — pick locked', 'error'); return; }
+
+  if (!S.picks[gid]) S.picks[gid] = {};
+  S.picks[gid][type] = value;
+  localStorage.setItem('pk_picks', JSON.stringify(S.picks));
+
+  if (S.sbReady) {
+    if (!S.playerId) await ensurePlayer();
+    await persistPick(gid, type, value, gameStart);
+  }
+
+  renderGames();
+  renderLeaderboard();
+  const label = type === 'ats' ? `${value} ATS` : `${value.toUpperCase()} ${getOdds(gid)?.total || ''}`;
+  toast(`Locked: ${label} ✓`, 'success');
+}
+
+function evalPick(gid, game, type) {
+  const p = S.picks[gid];
+  if (!p || !p[type]) return null;
+  if (game.status !== 'closed') return 'pending';
+  const odds = getOdds(gid);
+  const hScore = game.score?.[game.home] ?? 0;
+  const aScore = game.score?.[game.away] ?? 0;
+  const margin = hScore - aScore;
+
+  if (type === 'ats') {
+    if (!odds) return (hScore > aScore ? game.home : game.away) === p.ats ? 'correct' : 'incorrect';
+    let atsWin;
+    if (odds.fav === game.home) atsWin = margin > Math.abs(odds.line) ? game.home : game.away;
+    else atsWin = -margin > Math.abs(odds.line) ? game.away : game.home;
+    return atsWin === p.ats ? 'correct' : 'incorrect';
+  }
+  if (type === 'ou') {
+    if (!odds?.total) return null;
+    const combined = hScore + aScore;
+    if (combined === odds.total) return 'push';
+    const actualSide = combined > odds.total ? 'over' : 'under';
+    return actualSide === p.ou ? 'correct' : 'incorrect';
+  }
+  return null;
+}
+
+function weekStats(weekId) {
+  if (weekId !== CURRENT_WEEK) return PRIOR_HISTORY[weekId] || {correct:0,incorrect:0,total:0};
+  let correct=0, incorrect=0, total=0;
+  GAMES.filter(g=>g.wk===weekId).forEach(g => {
+    ['ats','ou'].forEach(type => {
+      const r = evalPick(g.id, g, type);
+      if (!r) return;
+      total++;
+      if (r==='correct') correct++;
+      if (r==='incorrect') incorrect++;
+    });
+  });
+  return {correct, incorrect, total};
+}
+
+// ─────────────────────────────────────
+// RENDER: TEAMS
+// ─────────────────────────────────────
+function teamCardHTML(abbr) {
+  const t = TEAMS[abbr];
+  const pct = Math.round(t.record.w/(t.record.w+t.record.l)*100);
+  return `
+  <div>
+    <div onclick="toggleAccordion('acc-${abbr}')" class="flex items-center gap-3 px-4 py-3 border-b border-dark-border cursor-pointer hover:bg-white/[.02] transition-colors group select-none">
+      <div class="w-9 h-9 rounded-lg flex items-center justify-center font-display text-xs tracking-wider flex-shrink-0"
+           style="background:${t.colors[0]}18;border:1px solid ${t.colors[0]}35;color:${t.colors[0]}">${abbr}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-semibold truncate">${t.name}</div>
+        <div class="flex gap-2 font-mono text-[10px] mt-0.5">
+          <span style="color:${t.colors[0]}">${t.record.w}W</span>
+          <span class="text-dark-muted">${t.record.l}L</span>
+          <span class="text-dark-muted">${pct}%</span>
+        </div>
+      </div>
+      <svg id="chev-${abbr}" class="w-3 h-3 text-dark-muted transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+    <div id="acc-${abbr}" class="accordion-body bg-white/[.01] border-b border-dark-border" style="border-left:2px solid ${t.colors[0]}">
+      <div class="px-4 py-3 text-xs space-y-1.5 text-dark-muted">
+        <div class="flex justify-between"><span>Arena</span><span class="text-slate-300 font-mono text-[10px] truncate max-w-[55%]">${t.arena}</span></div>
+        <div class="flex justify-between"><span>Founded</span><span class="text-slate-300 font-mono">${t.founded}</span></div>
+        <div class="flex justify-between"><span>Titles</span><span class="text-slate-300 font-mono">${t.titles} 🏆</span></div>
+        <div class="flex justify-between"><span>Coach</span><span class="text-slate-300 font-mono truncate max-w-[55%]">${t.coach}</span></div>
+        <p class="text-[11px] text-slate-400 leading-5 pt-1">${t.note}</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleAccordion(id) {
+  const el = document.getElementById(id);
+  const abbr = id.replace('acc-','');
+  const isOpen = el.classList.contains('open');
+  // close all
+  document.querySelectorAll('.accordion-body.open').forEach(e => {
+    e.classList.remove('open');
+    const a = e.id.replace('acc-','');
+    const c = document.getElementById(`chev-${a}`);
+    if(c) c.style.transform = '';
+  });
+  if (!isOpen) {
+    el.classList.add('open');
+    const chev = document.getElementById(`chev-${abbr}`);
+    if(chev) chev.style.transform = 'rotate(180deg)';
+  }
+}
+
+function renderTeams() {
+  const html = Object.keys(TEAMS).map(teamCardHTML).join('');
+  const d = document.getElementById('teamListDesktop');
+  const m = document.getElementById('teamListMobile');
+  if (d) d.innerHTML = html;
+  if (m) m.innerHTML = html;
+}
+
+// ─────────────────────────────────────
+// RENDER: GAME CARD
+// ─────────────────────────────────────
+function gameCard(g) {
+  const H = TEAMS[g.home] || {name:g.home,colors:['#333','#555']};
+  const A = TEAMS[g.away] || {name:g.away,colors:['#333','#555']};
+  const odds = getOdds(g.id);
+  const pkAts = S.picks[g.id]?.ats;
+  const pkOu  = S.picks[g.id]?.ou;
+  const resAts = evalPick(g.id, g, 'ats');
+  const resOu  = evalPick(g.id, g, 'ou');
+  const st = g.status==='inprogress'?'live':g.status==='closed'?'closed':'scheduled';
+  const locked = st !== 'scheduled' || Date.now() >= new Date(g.start);
+  const oddsLive = !!S.liveOdds[g.id];
+
+  // Status badge
+  const badge = st==='live'
+    ? `<span class="font-mono text-[10px] text-brand-red bg-brand-red/10 border border-brand-red/25 px-2 py-0.5 rounded-md">Q${g.quarter} ${g.clock}</span>`
+    : st==='closed'
+    ? `<span class="font-mono text-[10px] text-dark-muted bg-dark-border/40 border border-dark-border px-2 py-0.5 rounded-md">FINAL</span>`
+    : `<span class="font-mono text-[10px] text-brand-green bg-brand-green/10 border border-brand-green/20 px-2 py-0.5 rounded-md">OPEN</span>`;
+
+  // Spread labels
+  function atsLabel(abbr) {
+    if (!odds?.line) return abbr;
+    const isFav = odds.fav === abbr;
+    const sign = isFav ? odds.line : `+${Math.abs(odds.line)}`;
+    return `${abbr} <span class="${isFav?'text-brand-orange':'text-dark-muted'}">${sign}</span>`;
+  }
+  const ouLabel = odds?.total ? `O/U ${odds.total}` : 'O/U —';
+  const oddsTag = oddsLive
+    ? `<span class="font-mono text-[9px] text-brand-green">● LIVE ODDS</span>`
+    : `<span class="font-mono text-[9px] text-dark-muted">SIM ODDS</span>`;
+
+  // Result badge helper
+  function resBadge(r) {
+    if (r==='correct') return `<span class="font-mono text-[10px] text-brand-green bg-brand-green/10 border border-brand-green/20 px-2 py-0.5 rounded-md">✓ CORRECT</span>`;
+    if (r==='incorrect') return `<span class="font-mono text-[10px] text-brand-red bg-brand-red/10 border border-brand-red/20 px-2 py-0.5 rounded-md">✗ WRONG</span>`;
+    if (r==='push') return `<span class="font-mono text-[10px] text-dark-muted bg-dark-border/40 border border-dark-border px-2 py-0.5 rounded-md">PUSH</span>`;
+    if (r==='pending') return `<span class="font-mono text-[10px] text-brand-gold bg-brand-gold/10 border border-brand-gold/20 px-2 py-0.5 rounded-md">PENDING</span>`;
+    return '';
+  }
+
+  // Bottom pick section
+  let pickSection = '';
+  if (st === 'closed') {
+    pickSection = `
+      <div class="border-t border-dark-border px-4 py-2.5 flex flex-wrap gap-x-4 gap-y-1 items-center">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="font-mono text-[10px] text-dark-muted">ATS:</span>
+          ${pkAts ? `<span class="font-mono text-[10px] text-slate-300">${pkAts}</span> ${resBadge(resAts)}` : `<span class="font-mono text-[10px] text-dark-muted/50">no pick</span>`}
+        </div>
+        ${odds?.total ? `
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="font-mono text-[10px] text-dark-muted">O/U:</span>
+          ${pkOu ? `<span class="font-mono text-[10px] text-slate-300">${pkOu.toUpperCase()}</span> ${resBadge(resOu)}` : `<span class="font-mono text-[10px] text-dark-muted/50">no pick</span>`}
+        </div>` : ''}
+      </div>`;
+  } else if (st === 'live') {
+    pickSection = `
+      <div class="border-t border-dark-border px-4 py-2.5 flex items-center gap-3 bg-brand-red/[.03]">
+        <div class="w-1.5 h-1.5 rounded-full bg-brand-red live-dot flex-shrink-0"></div>
+        <span class="font-mono text-[10px] text-brand-red">PICKS LOCKED — GAME IN PROGRESS</span>
+        ${pkAts ? `<span class="ml-auto font-mono text-[10px] text-dark-muted">ATS: <span class="text-white">${pkAts}</span></span>` : ''}
+      </div>`;
+  } else {
+    // Open game — show ATS + O/U pick controls
+    pickSection = `
+      <div class="border-t border-dark-border px-4 py-3 space-y-2">
+        <!-- ATS picks -->
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-[10px] text-dark-muted w-8 flex-shrink-0">ATS</span>
+          <button onclick="makePick('${g.id}','ats','${g.away}','${g.start}')"
+            class="pick-btn flex-1 border border-dark-bright rounded-lg px-2 py-2 font-mono text-[11px] text-dark-muted ${pkAts===g.away?'sel-ats':''}"
+            ${locked?'disabled':''}>
+            ${atsLabel(g.away)}
+          </button>
+          <button onclick="makePick('${g.id}','ats','${g.home}','${g.start}')"
+            class="pick-btn flex-1 border border-dark-bright rounded-lg px-2 py-2 font-mono text-[11px] text-dark-muted ${pkAts===g.home?'sel-ats':''}"
+            ${locked?'disabled':''}>
+            ${atsLabel(g.home)}
+          </button>
+          <span class="font-mono text-[10px] text-dark-muted w-14 text-right" id="cd-${g.id}"></span>
+        </div>
+        <!-- O/U picks -->
+        ${odds?.total ? `
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-[10px] text-dark-muted w-8 flex-shrink-0">O/U</span>
+          <button onclick="makePick('${g.id}','ou','over','${g.start}')"
+            class="pick-btn flex-1 border border-dark-bright rounded-lg px-2 py-2 font-mono text-[11px] text-dark-muted ${pkOu==='over'?'sel-over':''}"
+            ${locked?'disabled':''}>
+            OVER <span class="text-brand-green">${odds.total}</span>
+          </button>
+          <button onclick="makePick('${g.id}','ou','under','${g.start}')"
+            class="pick-btn flex-1 border border-dark-bright rounded-lg px-2 py-2 font-mono text-[11px] text-dark-muted ${pkOu==='under'?'sel-under':''}"
+            ${locked?'disabled':''}>
+            UNDER <span class="text-brand-blue">${odds.total}</span>
+          </button>
+          <span class="w-14"></span>
+        </div>` : ''}
+      </div>`;
+  }
+
+  const border = st==='live' ? 'border-brand-red/20' : (pkAts||pkOu) ? 'border-brand-green/20' : 'border-dark-border';
+
+  return `
+  <div class="bg-dark-card border ${border} rounded-2xl mb-3 overflow-hidden hover:-translate-y-0.5 hover:border-dark-bright transition-all duration-150">
+    <!-- Header row -->
+    <div class="flex items-center gap-2.5 px-4 pt-3 pb-1">
+      <div class="w-2 h-2 rounded-full flex-shrink-0 ${st==='live'?'bg-brand-red live-dot':st==='closed'?'bg-dark-muted':'bg-brand-green'}"></div>
+      <span class="font-mono text-[10px] text-dark-muted flex-1 truncate">${g.localStart}</span>
+      ${oddsTag}
+      ${badge}
+    </div>
+    <!-- Teams + score -->
+    <div class="grid grid-cols-3 items-center gap-2 sm:gap-4 px-4 py-3">
+      <!-- Away -->
+      <div class="flex items-center gap-2 flex-row-reverse text-right">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-display text-xs tracking-wider flex-shrink-0"
+             style="background:${A.colors[0]}18;border:1px solid ${A.colors[0]}35;color:${A.colors[0]}">${g.away}</div>
+        <div class="min-w-0">
+          <div class="text-xs sm:text-sm font-semibold leading-tight truncate">${A.name.split(' ').slice(-1)[0]}</div>
+          <div class="font-mono text-[9px] text-dark-muted">AWAY</div>
+        </div>
+      </div>
+      <!-- Score / VS -->
+      <div class="text-center">
+        ${g.score
+          ? `<div class="font-display text-2xl sm:text-3xl tracking-widest leading-none">${g.score[g.home]} – ${g.score[g.away]}</div>`
+          : `<div class="font-display text-xl sm:text-2xl tracking-widest text-dark-muted">VS</div>`}
+        <div class="font-mono text-[9px] text-brand-gold mt-0.5">${ouLabel}</div>
+      </div>
+      <!-- Home -->
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-display text-xs tracking-wider flex-shrink-0"
+             style="background:${H.colors[0]}18;border:1px solid ${H.colors[0]}35;color:${H.colors[0]}">${g.home}</div>
+        <div class="min-w-0">
+          <div class="text-xs sm:text-sm font-semibold leading-tight truncate">${H.name.split(' ').slice(-1)[0]}</div>
+          <div class="font-mono text-[9px] text-dark-muted">HOME</div>
+        </div>
+      </div>
+    </div>
+    ${pickSection}
+  </div>`;
+}
+
+// ─────────────────────────────────────
+// RENDER: GAMES
+// ─────────────────────────────────────
+function showGameTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.classList.add('text-dark-muted');
+  });
+  ['live','upcoming','done'].forEach(t => document.getElementById(`gameTab-${t}`).classList.add('hidden'));
+  btn.classList.add('active');
+  btn.classList.remove('text-dark-muted');
+  document.getElementById(`gameTab-${tab}`).classList.remove('hidden');
+  S.activeGameTab = tab;
+}
+
+function renderGames() {
+  const today = new Date().toDateString();
+  const live = GAMES.filter(g => g.status==='inprogress');
+  const todayOpen = GAMES.filter(g => g.status==='scheduled' && new Date(g.start).toDateString()===today);
+  const upcoming = GAMES.filter(g => g.status==='scheduled' && new Date(g.start).toDateString()!==today);
+  const done = [...GAMES.filter(g=>g.status==='closed')].sort((a,b)=>new Date(b.start)-new Date(a.start));
+
+  function sectionHTML(games, label) {
+    if (!games.length) return `<div class="text-dark-muted text-sm text-center py-8 font-mono">No ${label.toLowerCase()} games</div>`;
+    return `<div class="flex items-baseline gap-3 mb-3"><span class="font-display text-lg tracking-widest">${label}</span><span class="font-mono text-[10px] text-dark-muted">${games.length} game${games.length!==1?'s':''}</span></div>`
+      + games.map(gameCard).join('');
+  }
+
+  document.getElementById('gameTab-live').innerHTML    = sectionHTML([...live,...todayOpen], 'LIVE & TODAY');
+  document.getElementById('gameTab-upcoming').innerHTML = sectionHTML(upcoming, 'UPCOMING');
+  document.getElementById('gameTab-done').innerHTML    = sectionHTML(done, 'COMPLETED');
+  updateCountdowns();
+}
+
+// ─────────────────────────────────────
+// RENDER: LEADERBOARD
+// ─────────────────────────────────────
+function renderLeaderboard() {
+  const ws = weekStats(CURRENT_WEEK);
+  const me = S.username ? {name:S.username, correct:ws.correct, total:ws.total, isMe:true, colors:['#ffb700','#0f0900']} : null;
+  let players = [...SIM_LB];
+  if (me) players.push(me);
+  players.sort((a,b) => b.correct-a.correct || a.total-b.total);
+
+  const rColors = ['text-yellow-400','text-slate-300','text-amber-600'];
+
+  const rowHTML = players.map((p,i) => `
+    <div class="flex items-center gap-3 px-5 py-2.5 transition-colors ${p.isMe?'bg-brand-gold/[.04]':'hover:bg-white/[.015]'}">
+      <span class="font-display text-lg w-5 text-center ${rColors[i]||'text-dark-muted'}">${i+1}</span>
+      <div class="w-7 h-7 rounded-full flex items-center justify-center font-display text-sm flex-shrink-0"
+           style="background:linear-gradient(135deg,${p.colors[0]},${p.colors[1]})">${p.name[0].toUpperCase()}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-semibold truncate">${p.name}${p.isMe?' 👤':''}</div>
+        <div class="font-mono text-[9px] text-dark-muted">${p.correct}/${p.total} · ${p.total?Math.round(p.correct/p.total*100):0}%</div>
+      </div>
+      <span class="font-display text-xl ${p.isMe?'text-brand-gold':'text-brand-green'}">${p.correct}</span>
+    </div>
+    ${i===2?'<div class="border-t border-dark-border my-1 mx-5"></div>':''}
+  `).join('');
+
+  // Desktop right sidebar
+  document.getElementById('lbList').innerHTML = rowHTML;
+  // Mobile standings panel
+  const mLb = document.getElementById('mobileLeaderboard');
+  if (mLb) mLb.innerHTML = rowHTML;
+
+  // Stats
+  const pct = ws.total ? Math.round(ws.correct/ws.total*100) : 0;
+  ['sc','si','st'].forEach((id,idx) => {
+    const vals = [ws.correct, ws.incorrect, ws.total];
+    document.getElementById(id).textContent = vals[idx];
+  });
+  document.getElementById('sbar').style.width = pct+'%';
+  document.getElementById('spct').textContent = `${pct}% accuracy`;
+
+  // Mobile stats
+  const mStats = document.getElementById('mobileMyStats');
+  if (mStats) {
+    mStats.innerHTML = `
+      <div class="font-mono text-[9px] tracking-widest text-dark-muted uppercase mb-3">YOUR WEEK</div>
+      <div class="grid grid-cols-3 gap-2 mb-3">
+        <div class="text-center"><div class="font-display text-2xl text-brand-green">${ws.correct}</div><div class="font-mono text-[9px] text-dark-muted">CORRECT</div></div>
+        <div class="text-center"><div class="font-display text-2xl text-brand-orange">${ws.incorrect}</div><div class="font-mono text-[9px] text-dark-muted">WRONG</div></div>
+        <div class="text-center"><div class="font-display text-2xl text-brand-gold">${ws.total}</div><div class="font-mono text-[9px] text-dark-muted">TOTAL</div></div>
+      </div>
+      <div class="h-1.5 bg-dark-border rounded-full overflow-hidden mb-1">
+        <div class="h-full bg-gradient-to-r from-brand-orange to-brand-gold hist-bar" style="width:${pct}%"></div>
+      </div>
+      <div class="font-mono text-[10px] text-dark-muted text-right">${pct}% accuracy</div>`;
+  }
+
+  // Sheet LB
+  const shLb = document.getElementById('sheetLbContent');
+  if (shLb) shLb.innerHTML = rowHTML;
+}
+
+// ─────────────────────────────────────
+// RENDER: HISTORY
+// ─────────────────────────────────────
+function renderHistory() {
+  const allWeeks = WEEKS.map(w => ({...w, ...weekStats(w.id)}));
+
+  // Season totals
+  const totalCorrect = allWeeks.reduce((s,w)=>s+w.correct,0);
+  const totalTotal = allWeeks.reduce((s,w)=>s+w.total,0);
+  const totalPct = totalTotal ? Math.round(totalCorrect/totalTotal*100) : 0;
+  const bestWeek = [...allWeeks].sort((a,b)=>b.correct-a.correct)[0];
+
+  document.getElementById('seasonTotals').innerHTML = `
+    <div class="bg-dark-card border border-dark-border rounded-xl p-4 text-center">
+      <div class="font-display text-3xl text-brand-green">${totalCorrect}</div>
+      <div class="font-mono text-[10px] text-dark-muted mt-1">TOTAL CORRECT</div>
+    </div>
+    <div class="bg-dark-card border border-dark-border rounded-xl p-4 text-center">
+      <div class="font-display text-3xl text-brand-gold">${totalPct}%</div>
+      <div class="font-mono text-[10px] text-dark-muted mt-1">SEASON ACC.</div>
+    </div>
+    <div class="bg-dark-card border border-dark-border rounded-xl p-4 text-center">
+      <div class="font-display text-3xl text-brand-orange">${bestWeek?.correct||0}</div>
+      <div class="font-mono text-[10px] text-dark-muted mt-1">BEST WEEK</div>
+    </div>`;
+
+  // Chart
+  const maxCorrect = Math.max(...allWeeks.map(w=>w.correct), 1);
+  const barW = `calc(${Math.floor(100/allWeeks.length)}% - 6px)`;
+
+  document.getElementById('histChart').innerHTML = allWeeks.map(w => {
+    const h = Math.max(4, Math.round((w.correct/maxCorrect)*88));
+    const isCurrent = w.id === CURRENT_WEEK;
+    const pct = w.total ? Math.round(w.correct/w.total*100) : 0;
+    return `
+      <div class="flex flex-col items-center gap-1 flex-1" title="${w.label}: ${w.correct}/${w.total} correct">
+        <div class="font-mono text-[9px] ${isCurrent?'text-brand-gold':'text-dark-muted'}">${pct}%</div>
+        <div class="week-bar rounded-t-md w-full ${isCurrent?'bg-brand-gold':'bg-brand-green/50'}" style="height:${h}px"></div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('histLabels').innerHTML = allWeeks.map(w =>
+    `<div class="flex-1 text-center font-mono text-[9px] ${w.id===CURRENT_WEEK?'text-brand-gold':'text-dark-muted'} truncate">W${w.label.replace('Week ','')}</div>`
+  ).join('');
+
+  // Week-by-week breakdown
+  document.getElementById('weekBreakdown').innerHTML = allWeeks.map(w => {
+    const pct = w.total ? Math.round(w.correct/w.total*100) : 0;
+    const isCurrent = w.id === CURRENT_WEEK;
+    return `
+      <div class="flex items-center gap-4 px-4 py-3 border-b border-dark-border last:border-0">
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-semibold flex items-center gap-2">
+            ${w.label}
+            ${isCurrent ? `<span class="font-mono text-[9px] bg-brand-gold/15 text-brand-gold border border-brand-gold/20 px-1.5 py-0.5 rounded">CURRENT</span>` : ''}
+          </div>
+          <div class="font-mono text-[10px] text-dark-muted">${w.range}</div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="w-20 h-1.5 bg-dark-border rounded-full overflow-hidden">
+            <div class="h-full rounded-full hist-bar ${isCurrent?'bg-brand-gold':'bg-brand-green'}" style="width:${pct}%"></div>
+          </div>
+          <div class="font-display text-lg ${isCurrent?'text-brand-gold':'text-brand-green'} w-10 text-right">${w.correct}<span class="text-dark-muted text-sm">/${w.total}</span></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Season mini chart (right sidebar)
+  const mini = document.getElementById('miniChart');
+  const miniL = document.getElementById('miniLabels');
+  if (mini) {
+    mini.innerHTML = allWeeks.map(w => {
+      const h = Math.max(3, Math.round((w.correct/maxCorrect)*44));
+      return `<div class="flex-1 week-bar rounded-t-sm ${w.id===CURRENT_WEEK?'bg-brand-gold':'bg-brand-green/40'}" style="height:${h}px"></div>`;
+    }).join('');
+  }
+  if (miniL) {
+    miniL.innerHTML = `<span>${allWeeks[0]?.label||''}</span><span>${allWeeks[allWeeks.length-1]?.label||''}</span>`;
+  }
+}
+
+// ─────────────────────────────────────
+// LEADERBOARD WEEK NAV
+// ─────────────────────────────────────
+function changeWeek(dir) {
+  const idx = WEEKS.findIndex(w=>w.id===S.viewWeek);
+  const next = WEEKS[idx+dir];
+  if (!next) return;
+  S.viewWeek = next.id;
+  document.getElementById('lbWeekLabel').textContent = `${next.label.toUpperCase()} · ${next.range.toUpperCase()}`;
+  renderLeaderboard();
+}
+
+// ─────────────────────────────────────
+// BOTTOM SHEETS (mobile)
+// ─────────────────────────────────────
+function openSheet(type) {
+  document.getElementById('sheetOverlay').classList.remove('hidden');
+  if (type==='teams')  document.getElementById('sheetTeams').classList.remove('hidden');
+  if (type==='lb')     document.getElementById('sheetLb').classList.remove('hidden');
+}
+function closeSheets() {
+  document.getElementById('sheetOverlay').classList.add('hidden');
+  document.getElementById('sheetTeams').classList.add('hidden');
+  document.getElementById('sheetLb').classList.add('hidden');
+}
+
+// ─────────────────────────────────────
+// MOBILE MAIN TABS
+// ─────────────────────────────────────
+function showMainTab(tab) {
+  ['games','history','standings'].forEach(t => {
+    document.getElementById(`panel${t.charAt(0).toUpperCase()+t.slice(1)}`).classList.toggle('hidden', t!==tab);
+  });
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const isActive = b.dataset.nav === tab;
+    b.classList.toggle('text-brand-orange', isActive);
+    b.classList.toggle('text-dark-muted', !isActive);
+  });
+  if (tab==='history') renderHistory();
+}
+
+// ─────────────────────────────────────
+// COUNTDOWNS
+// ─────────────────────────────────────
+function updateCountdowns() {
+  const now = Date.now();
+  GAMES.forEach(g => {
+    if (g.status!=='scheduled') return;
+    const el = document.getElementById(`cd-${g.id}`);
+    if (!el) return;
+    const diff = new Date(g.start)-now;
+    if (diff <= 0) { el.innerHTML = '<span class="text-brand-red">LOCKED</span>'; return; }
+    const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+    el.innerHTML = h>0
+      ? `<span class="text-dark-muted">${h}h${m}m</span>`
+      : `<span class="${m<5?'text-brand-red':'text-brand-gold'}">${m}m${s}s</span>`;
+  });
+}
+
+// ─────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────
+let _toastTimer;
+const TOAST_COLORS = {
+  success:'text-brand-green border-brand-green/40',
+  error:'text-brand-red border-brand-red/40',
+  info:'text-brand-gold border-brand-gold/40'
+};
+function toast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 bg-dark-card border rounded-2xl px-5 py-3 font-mono text-xs z-[70] pointer-events-none shadow-2xl whitespace-nowrap transition-all duration-300 opacity-100 translate-y-0 ${TOAST_COLORS[type]}`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(10px)';
+  }, 2800);
+}
+
+// ─────────────────────────────────────
+// HEADER
+// ─────────────────────────────────────
+function updateHeader() {
+  const u = S.username;
+  document.getElementById('hdrAvatar').textContent = u ? u[0].toUpperCase() : '?';
+  document.getElementById('hdrName').textContent = u || 'Set Name';
+  const w = WEEKS.find(w=>w.id===CURRENT_WEEK);
+  if (w) {
+    document.getElementById('weekLabel').textContent = `${w.label.toUpperCase()} · ${w.range.toUpperCase()}`;
+    document.getElementById('lbWeekLabel').textContent = `${w.label.toUpperCase()} · ${w.range.toUpperCase()}`;
+    const sl = document.getElementById('standingsWeekLabel');
+    if (sl) sl.textContent = w.label.toUpperCase();
+  }
+}
+
+// ─────────────────────────────────────
+// INIT
+// ─────────────────────────────────────
+function renderAll() {
+  renderTeams();
+  renderGames();
+  renderLeaderboard();
+  renderHistory();
+}
+
+async function init() {
+  updateHeader();
+  setWizStep(1);
+
+  if (S.username) {
+    document.getElementById('setupModal').classList.add('hidden');
+    document.getElementById('uInput').value = S.username;
+    if (S.sbUrl && S.sbKey) {
+      initSupabase();
+      await ensurePlayer();
+    }
+    if (S.oddsKey) fetchOdds();
+    renderAll();
+  }
+
+  setInterval(updateCountdowns, 1000);
+  setInterval(renderGames, 60000);
+  if (S.oddsKey) setInterval(fetchOdds, 300000);
+}
+
+document.getElementById('uInput').addEventListener('keydown', e => { if(e.key==='Enter') wizStep(1); });
+init();
+</script>
+</body>
+</html>
